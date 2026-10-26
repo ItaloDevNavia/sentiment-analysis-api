@@ -42,8 +42,10 @@ def setup_exception_handlers(app: FastAPI) -> None:
             request.url.path,
             len(sanitized_errors),
         )
+        # Use modern RFC 9110 HTTP_422_UNPROCESSABLE_CONTENT (value 422) to avoid Starlette deprecation warning
+        status_422 = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status_422,
             content={"detail": sanitized_errors},
         )
 
