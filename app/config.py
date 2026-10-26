@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     # Server configuration
     host: str = "0.0.0.0"
     port: int = 8000
+    cors_origins: list[str] = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+    ]
+    cors_allow_credentials: bool = False
 
     # Model inference settings
     # CardiffNLP's roberta model outputs labels: positive, neutral, negative
