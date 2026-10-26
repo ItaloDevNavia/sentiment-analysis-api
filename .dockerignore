@@ -1,0 +1,40 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Git & Repository metadata
+.git/
+.gitignore
+
+# Environment variables & local secrets
+.env
+.env.*
+!.env.example
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Testing & Coverage
+tests/
+pytest.ini
+requirements-dev.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Hugging Face local downloads & caches
+.cache/
+hf_cache/
+
+# IDE, OS & editor files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp

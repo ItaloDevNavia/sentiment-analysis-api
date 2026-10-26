@@ -114,3 +114,18 @@ def test_health_response_schema() -> None:
     assert resp.status == "healthy"
     assert resp.api_active is True
     assert resp.model_loaded is True
+
+
+@pytest.mark.parametrize("invalid_text", [None, [], {}, 12345])
+def test_sentiment_request_rejects_non_string_types(invalid_text: object) -> None:
+    """Verify non-string types for text field raise ValidationError."""
+    with pytest.raises(ValidationError):
+        SentimentRequest(text=invalid_text)  # type: ignore[arg-type]
+
+
+def test_sentiment_response_rejects_non_convertible_score_type() -> None:
+    """Verify string score that cannot be converted to float raises ValidationError."""
+    with pytest.raises(ValidationError) as exc_info:
+        SentimentResponse(text="Valid", sentiment=SentimentLabel.POSITIVE, score="not_a_float")  # type: ignore[arg-type]
+    assert "Sentiment score must be a valid float" in str(exc_info.value)
+

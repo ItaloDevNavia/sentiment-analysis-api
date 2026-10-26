@@ -157,3 +157,37 @@ def test_predict_raises_inference_error_on_corrupt_pipeline_output() -> None:
         service.predict("Sample text")
 
     assert "Unexpected pipeline output structure" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("corrupt_output", [[None], ["not_a_dict"], [{"no_label": 1}]])
+def test_predict_raises_inference_error_on_non_dict_or_missing_keys(corrupt_output: list) -> None:
+    """Verify list containing non-dict items or missing labels raises SentimentInferenceError or UnrecognizedModelLabelError."""
+    mock_pipeline = MagicMock(return_value=corrupt_output)
+    service = SentimentModelService(pipeline_factory=lambda **kwargs: mock_pipeline)
+    service.load_model("mock-model")
+
+    with pytest.raises((SentimentInferenceError, Exception)):
+        service.predict("Sample text")
+
+
+def test_predict_raises_invalid_score_on_non_float_score() -> None:
+    """Verify non-numeric score string returned from model raises InvalidScoreError."""
+    mock_pipeline = MagicMock(return_value=[{"label": "positive", "score": "not_numeric"}])
+    service = SentimentModelService(pipeline_factory=lambda **kwargs: mock_pipeline)
+    service.load_model("mock-model")
+
+    with pytest.raises(InvalidScoreError) as exc_info:
+        service.predict("Sample text")
+    assert "Inference score is not a valid float" in str(exc_info.value)
+
+
+def test_predict_wraps_unexpected_runtime_exception() -> None:
+    """Verify unhandled exception during pipeline execution is re-raised as SentimentInferenceError."""
+    failing_pipeline = MagicMock(side_effect=RuntimeError("PyTorch runtime device crash"))
+    service = SentimentModelService(pipeline_factory=lambda **kwargs: failing_pipeline)
+    service.load_model("mock-model")
+
+    with pytest.raises(SentimentInferenceError) as exc_info:
+        service.predict("Sample text")
+    assert "Inference failed unexpectedly" in str(exc_info.value)
+

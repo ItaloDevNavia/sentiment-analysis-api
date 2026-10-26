@@ -192,3 +192,58 @@ async def test_lifespan_startup_failure_leaves_service_degraded() -> None:
             # Prediction returns 503
             predict_resp = await custom_client.post("/predict", json={"text": "Test text"})
             assert predict_resp.status_code == 503
+
+
+# ============================================================================
+# Boundary & Additional HTTP Exception Tests
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_predict_exact_max_length_accepted(client: httpx.AsyncClient) -> None:
+    """Verify text of exactly max_text_length characters is accepted with 200 OK."""
+    settings = get_settings()
+    exact_text = "x" * settings.max_text_length
+    response = await client.post("/predict", json={"text": exact_text})
+    assert response.status_code == 200
+    assert len(response.json()["text"]) == settings.max_text_length
+
+
+@pytest.mark.parametrize("invalid_payload", [{"text": None}, {"text": []}, {"text": {}}])
+@pytest.mark.asyncio
+async def test_predict_rejects_non_string_payloads(client: httpx.AsyncClient, invalid_payload: dict) -> None:
+    """Verify non-string types in JSON payload return 422."""
+    response = await client.post("/predict", json=invalid_payload)
+    assert response.status_code == 422
+    assert "detail" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_predict_rejects_malformed_json_body(client: httpx.AsyncClient) -> None:
+    """Verify malformed JSON payload returns 422 with sanitized error format."""
+    response = await client.post(
+        "/predict",
+        content=b"{invalid_json:",
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert "detail" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_not_found_endpoint_returns_404_json(client: httpx.AsyncClient) -> None:
+    """Verify non-existent route returns 404 handled by StarletteHTTPException handler."""
+    response = await client.get("/non_existent_route")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert data["detail"] == "Not Found"
+
+
+@pytest.mark.asyncio
+async def test_method_not_allowed_returns_405_json(client: httpx.AsyncClient) -> None:
+    """Verify invalid HTTP method returns 405 handled by StarletteHTTPException handler."""
+    response = await client.delete("/predict")
+    assert response.status_code == 405
+    data = response.json()
+    assert "detail" in data
+
