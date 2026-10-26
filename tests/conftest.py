@@ -1,8 +1,8 @@
-"""Pytest configuration and fixtures for integration tests."""
-from typing import Generator
-from unittest.mock import MagicMock
+"""Pytest configuration and fixtures for integration tests using httpx.AsyncClient."""
+from typing import AsyncGenerator
+import httpx
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
 
 from app.main import create_application
 from app.schemas.sentiment import SentimentLabel, SentimentResponse
@@ -54,10 +54,12 @@ def ready_mock_service() -> MockSentimentService:
     return MockSentimentService(is_ready=True)
 
 
-@pytest.fixture
-def client(ready_mock_service: MockSentimentService) -> Generator[TestClient, None, None]:
-    """TestClient fixture with pre-injected ready mock sentiment service."""
+@pytest_asyncio.fixture
+async def client(ready_mock_service: MockSentimentService) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Asynchronous HTTP client fixture executing within FastAPI's lifespan context."""
     app = create_application()
     app.state.sentiment_service = ready_mock_service
-    with TestClient(app=app) as test_client:
-        yield test_client
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as test_client:
+            yield test_client
